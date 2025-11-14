@@ -1,17 +1,32 @@
 FROM php:8.1-apache
 
-# Install PHP extensions for PostgreSQL
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
+    git \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
     libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql pgsql \
+    && docker-php-ext-install pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Enable Apache rewrite module
 RUN a2enmod rewrite
 
 # Set working directory
 WORKDIR /var/www/html
+
+# Copy composer files first for better caching
+COPY composer.json composer.lock* ./ 
+
+# Install PHP dependencies
+RUN composer install --no-dev --optimize-autoloader
 
 # Copy application files
 COPY . /var/www/html/
@@ -28,4 +43,4 @@ RUN sed -ri -e 's!/var/www/html!/var/www/html!g' /etc/apache2/sites-available/*.
 EXPOSE 80
 
 # Add a comment to trigger redeploy
-# Last updated: Add super admin user creation and permissions initialization
+# Last updated: Fix Composer dependencies installation
