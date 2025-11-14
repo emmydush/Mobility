@@ -45,29 +45,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Check if tenant_id already exists
                     $check_query = "SELECT id FROM tenants WHERE tenant_id = ?";
                     $check_stmt = $conn->prepare($check_query);
-                    $check_stmt->bind_param("s", $tenant_id);
+                    $check_stmt->bindParam(1, $tenant_id, PDO::PARAM_STR);
                     $check_stmt->execute();
-                    $check_result = $check_stmt->get_result();
+                    $check_result = $check_stmt->fetchAll(PDO::FETCH_ASSOC);
                     
-                    if ($check_result->num_rows > 0) {
+                    if (count($check_result) > 0) {
                         $message = t('tenant_already_exists');
                         $message_type = "error";
                     } else {
                         // Insert new tenant
                         $insert_query = "INSERT INTO tenants (tenant_id, business_name, business_type, business_email, business_phone, country, city, address, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
                         $insert_stmt = $conn->prepare($insert_query);
-                        $insert_stmt->bind_param("sssssssss", $tenant_id, $business_name, $business_type, $business_email, $business_phone, $country, $city, $address, $status);
+                        $insert_stmt->bindParam(1, $tenant_id, PDO::PARAM_STR);
+                        $insert_stmt->bindParam(2, $business_name, PDO::PARAM_STR);
+                        $insert_stmt->bindParam(3, $business_type, PDO::PARAM_STR);
+                        $insert_stmt->bindParam(4, $business_email, PDO::PARAM_STR);
+                        $insert_stmt->bindParam(5, $business_phone, PDO::PARAM_STR);
+                        $insert_stmt->bindParam(6, $country, PDO::PARAM_STR);
+                        $insert_stmt->bindParam(7, $city, PDO::PARAM_STR);
+                        $insert_stmt->bindParam(8, $address, PDO::PARAM_STR);
+                        $insert_stmt->bindParam(9, $status, PDO::PARAM_STR);
                         
                         if ($insert_stmt->execute()) {
                             $message = t('tenant_added_successfully');
                             $message_type = "success";
                         } else {
-                            $message = t('error_adding_tenant') . $conn->error;
+                            $message = t('error_adding_tenant') . $conn->errorInfo()[2];
                             $message_type = "error";
                         }
-                        $insert_stmt->close();
+                        $insert_stmt = null;
                     }
-                    $check_stmt->close();
+                    $check_stmt = null;
                 } else {
                     $message = t('please_fill_required_fields');
                     $message_type = "error";
@@ -89,16 +97,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Update tenant
                     $update_query = "UPDATE tenants SET business_name = ?, business_type = ?, business_email = ?, business_phone = ?, country = ?, city = ?, address = ?, status = ? WHERE id = ?";
                     $update_stmt = $conn->prepare($update_query);
-                    $update_stmt->bind_param("ssssssssi", $business_name, $business_type, $business_email, $business_phone, $country, $city, $address, $status, $id);
+                    $update_stmt->bindParam(1, $business_name, PDO::PARAM_STR);
+                    $update_stmt->bindParam(2, $business_type, PDO::PARAM_STR);
+                    $update_stmt->bindParam(3, $business_email, PDO::PARAM_STR);
+                    $update_stmt->bindParam(4, $business_phone, PDO::PARAM_STR);
+                    $update_stmt->bindParam(5, $country, PDO::PARAM_STR);
+                    $update_stmt->bindParam(6, $city, PDO::PARAM_STR);
+                    $update_stmt->bindParam(7, $address, PDO::PARAM_STR);
+                    $update_stmt->bindParam(8, $status, PDO::PARAM_STR);
+                    $update_stmt->bindParam(9, $id, PDO::PARAM_INT);
                     
                     if ($update_stmt->execute()) {
                         $message = t('tenant_updated_successfully');
                         $message_type = "success";
                     } else {
-                        $message = t('error_updating_tenant') . $conn->error;
+                        $message = t('error_updating_tenant') . $conn->errorInfo()[2];
                         $message_type = "error";
                     }
-                    $update_stmt->close();
+                    $update_stmt = null;
                 } else {
                     $message = t('please_fill_required_fields');
                     $message_type = "error";
@@ -112,16 +128,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Delete tenant
                     $delete_query = "DELETE FROM tenants WHERE id = ?";
                     $delete_stmt = $conn->prepare($delete_query);
-                    $delete_stmt->bind_param("i", $id);
+                    $delete_stmt->bindParam(1, $id, PDO::PARAM_INT);
                     
                     if ($delete_stmt->execute()) {
                         $message = t('tenant_deleted_successfully');
                         $message_type = "success";
                     } else {
-                        $message = t('error_deleting_tenant') . $conn->error;
+                        $message = t('error_deleting_tenant') . $conn->errorInfo()[2];
                         $message_type = "error";
                     }
-                    $delete_stmt->close();
+                    $delete_stmt = null;
                 } else {
                     $message = t('invalid_tenant_id');
                     $message_type = "error";
@@ -136,7 +152,7 @@ $tenants = [];
 $tenants_query = "SELECT id, tenant_id, business_name, business_type, business_email, business_phone, country, city, address, status, created_at FROM tenants ORDER BY created_at DESC";
 $tenants_result = $conn->query($tenants_query);
 if ($tenants_result) {
-    while ($row = $tenants_result->fetch_assoc()) {
+    while ($row = $tenants_result->fetch(PDO::FETCH_ASSOC)) {
         $tenants[] = $row;
     }
 }

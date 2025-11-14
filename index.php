@@ -1,5 +1,6 @@
 <?php
-session_start();
+// Include bootstrap
+require_once __DIR__ . '/bootstrap.php';
 
 // If user is already logged in, redirect to dashboard
 if (isset($_SESSION['user_id'])) {

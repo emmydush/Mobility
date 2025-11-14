@@ -1,0 +1,214 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Code Quality and Testing
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_DB: mobility_test
+          POSTGRES_USER: mobility_user
+          POSTGRES_PASSWORD: mobility_pass
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_pgsql, pgsql, gd, zip
+          coverage: none
+
+      - name: Validate composer.json and composer.lock
+        run: composer validate --strict
+
+      - name: Cache Composer packages
+        id: composer-cache
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Run PHP syntax check
+        run: find . -name "*.php" -not -path "./vendor/*" -not -path "./node_modules/*" | xargs -n 1 php -l
+
+      - name: Run security checks
+        run: |
+          composer require --dev roave/security-advisories:dev-latest
+          echo "Security checks completed"
+
+      - name: Setup database
+        run: |
+          export PGPASSWORD=mobility_pass
+          psql -h localhost -U mobility_user -d mobility_test -f init-scripts/init-db.sql
+
+      - name: Run tests
+        run: |
+          if [ -f "phpunit.xml" ]; then
+            ./vendor/bin/phpunit
+          else
+            echo "No phpunit.xml found, skipping tests"
+          fi
+        env:
+          DATABASE_URL: postgresql://mobility_user:mobility_pass@localhost:5432/mobility_test
+
+  # Docker Build and Push
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Deploy to Staging
+  deploy-staging:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Deploy to Staging
+        id: deploy
+        run: |
+          echo "Deploying to staging environment..."
+          echo "This would typically involve:"
+          echo "1. Deploying Docker image to staging server"
+          echo "2. Running database migrations"
+          echo "3. Performing health checks"
+          echo "::set-output name=url::https://staging.example.com"
+          
+  # Deploy to Production
+  deploy-production:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Deploy to Production
+        id: deploy
+        run: |
+          echo "Deploying to production environment..."
+          echo "This would typically involve:"
+          echo "1. Deploying Docker image to production server"
+          echo "2. Running database migrations"
+          echo "3. Performing health checks"
+          echo "::set-output name=url::https://example.com"
+          
+  # Security Scanning
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Code Quality Analysis
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_pgsql, pgsql, gd, zip
+          coverage: none
+          tools: php-cs-fixer, phpstan
+
+      - name: Run PHP-CS-Fixer
+        run: |
+          if [ -f ".php_cs.dist" ] || [ -f ".php_cs" ]; then
+            php-cs-fixer fix --dry-run --diff
+          else
+            echo "No PHP-CS-Fixer config found, skipping"
+          fi
+
+      - name: Run PHPStan
+        run: |
+          if [ -f "phpstan.neon" ] || [ -f "phpstan.neon.dist" ]; then
+            phpstan analyse
+          else
+            echo "No PHPStan config found, skipping"
+          fi

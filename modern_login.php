@@ -1,8 +1,11 @@
 <?php
-session_start();
+// Include bootstrap
+require_once __DIR__ . '/bootstrap.php';
 
 // Include database connection
-include_once 'api/config/database.php';
+use Mobility\Database\Connection;
+$db = Connection::getInstance();
+$conn = $db->getConnection();
 
 // Include language functions
 include_once 'api/config/languages.php';

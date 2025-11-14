@@ -1,0 +1,50 @@
+name: Docker Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 3 * * 0'  # Run every Sunday at 3 AM UTC
+  workflow_dispatch:
+
+jobs:
+  docker-security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t mobility-app .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'mobility-app'
+          format: 'sarif'
+          output: 'trivy-image-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-image-results.sarif'
+
+      - name: Run Dockle security linter
+        uses: goodwithtech/dockle-action@v1
+        with:
+          image: mobility-app
+          format: 'sarif'
+          output: 'dockle-results.sarif'
+          exit-code: '1'
+          exit-level: 'warn'
+
+      - name: Upload Dockle scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'dockle-results.sarif'

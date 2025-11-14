@@ -27,13 +27,13 @@ $query = "SELECT u.*, COUNT(us.id) as active_sessions
           ORDER BY u.username";
 $stmt = $conn->prepare($query);
 if ($stmt) {
-    $stmt->bind_param("i", $_SESSION['tenant_id']);
+    $stmt->bindParam(1, $_SESSION['tenant_id'], PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
+    $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($result as $row) {
         $users[] = $row;
     }
-    $stmt->close();
+    $stmt->closeCursor();
 }
 
 // Fetch user statistics
@@ -204,5 +204,5 @@ foreach ($users as $user) {
 </html>
 
 <?php
-$conn->close();
+$conn = null;
 ?>

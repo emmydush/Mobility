@@ -36,13 +36,15 @@ function getDatabaseDetails($conn) {
         // Get database version
         $version_result = $conn->query("SELECT VERSION() as version");
         if ($version_result) {
-            $details['version'] = $version_result->fetch_assoc()['version'];
+            $row = $version_result->fetch(PDO::FETCH_ASSOC);
+            $details['version'] = $row['version'];
         }
         
         // Get database size
         $size_result = $conn->query("SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS 'DB Size in MB' FROM information_schema.tables WHERE table_schema = DATABASE()");
         if ($size_result) {
-            $details['size'] = $size_result->fetch_assoc()['DB Size in MB'] . ' MB';
+            $row = $size_result->fetch(PDO::FETCH_ASSOC);
+            $details['size'] = $row['DB Size in MB'] . ' MB';
         }
         
         // Get connection status
@@ -113,28 +115,32 @@ $network_color = $network_health ? 'green' : 'red';
 $tenants_query = "SELECT COUNT(*) as count FROM tenants";
 $tenants_result = $conn->query($tenants_query);
 if ($tenants_result) {
-    $total_tenants = $tenants_result->fetch_assoc()['count'];
+    $row = $tenants_result->fetch(PDO::FETCH_ASSOC);
+    $total_tenants = $row['count'];
 }
 
 // Get total users
 $users_query = "SELECT COUNT(*) as count FROM users";
 $users_result = $conn->query($users_query);
 if ($users_result) {
-    $total_users = $users_result->fetch_assoc()['count'];
+    $row = $users_result->fetch(PDO::FETCH_ASSOC);
+    $total_users = $row['count'];
 }
 
 // Get active tenants
 $active_tenants_query = "SELECT COUNT(*) as count FROM tenants WHERE status = 'active'";
 $active_tenants_result = $conn->query($active_tenants_query);
 if ($active_tenants_result) {
-    $active_tenants = $active_tenants_result->fetch_assoc()['count'];
+    $row = $active_tenants_result->fetch(PDO::FETCH_ASSOC);
+    $active_tenants = $row['count'];
 }
 
 // Get total sales across all tenants
 $sales_query = "SELECT COUNT(*) as count FROM sales";
 $sales_result = $conn->query($sales_query);
 if ($sales_result) {
-    $total_sales = $sales_result->fetch_assoc()['count'];
+    $row = $sales_result->fetch(PDO::FETCH_ASSOC);
+    $total_sales = $row['count'];
 }
 
 // Fetch recent activity
@@ -148,11 +154,11 @@ $activity_query = "SELECT u.username, u.role, t.business_name, u.last_login
 $activity_stmt = $conn->prepare($activity_query);
 if ($activity_stmt) {
     $activity_stmt->execute();
-    $activity_result = $activity_stmt->get_result();
-    while ($row = $activity_result->fetch_assoc()) {
+    $activity_result = $activity_stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($activity_result as $row) {
         $recent_activity[] = $row;
     }
-    $activity_stmt->close();
+    $activity_stmt->closeCursor();
 }
 
 // Fetch tenants list
@@ -162,7 +168,7 @@ $tenants_query = "SELECT id, tenant_id, business_name, business_type, business_e
                   ORDER BY created_at DESC";
 $tenants_result = $conn->query($tenants_query);
 if ($tenants_result) {
-    while ($row = $tenants_result->fetch_assoc()) {
+    while ($row = $tenants_result->fetch(PDO::FETCH_ASSOC)) {
         $tenants[] = $row;
     }
 }

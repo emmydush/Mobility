@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: mobility-app
+    env: php
+    buildCommand: "composer install --no-dev --optimize-autoloader"
+    startCommand: "bash render-start.sh"
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://mobility_db_user:243j1kW3g4rlkksNDdMehLHpplQVRJTa@dpg-d4bl9ommcj7s73fivfgg-a/mobility_db
+      - key: APP_ENV
+        value: production
+
+  - type: pserv
+    name: mobility-db
+    env: postgres
+    databaseName: mobility_db
+    databaseUser: mobility_db_user
+    autoDeploy: false

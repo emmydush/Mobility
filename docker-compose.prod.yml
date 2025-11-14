@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "80:80"
+    environment:
+      - DATABASE_URL=postgresql://mobility_db_user:243j1kW3g4rlkksNDdMehLHpplQVRJTa@db:5432/mobility_db
+      - APP_ENV=prod
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - mobility-network
+    # In production, we might want to use a reverse proxy like nginx
+    # and not expose the port directly
+    
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: mobility_db
+      POSTGRES_USER: mobility_db_user
+      POSTGRES_PASSWORD: 243j1kW3g4rlkksNDdMehLHpplQVRJTa
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - mobility-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mobility_db_user -d mobility_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # In production, you might want to restrict access to the database
+    # ports:
+    #   - "5432:5432"
+
+volumes:
+  postgres_data:
+
+networks:
+  mobility-network:
+    driver: bridge

@@ -68,17 +68,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $query = "INSERT INTO suppliers (tenant_id, name, contact_person, email, phone, address, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
                         $stmt = $conn->prepare($query);
                         if ($stmt) {
-                            $stmt->bind_param("issssssi", $_SESSION['tenant_id'], $name, $contact_person, $email, $phone, $address, $status, $_SESSION['user_id']);
+                            $stmt->bindParam(1, $_SESSION['tenant_id'], PDO::PARAM_INT);
+                            $stmt->bindParam(2, $name, PDO::PARAM_STR);
+                            $stmt->bindParam(3, $contact_person, PDO::PARAM_STR);
+                            $stmt->bindParam(4, $email, PDO::PARAM_STR);
+                            $stmt->bindParam(5, $phone, PDO::PARAM_STR);
+                            $stmt->bindParam(6, $address, PDO::PARAM_STR);
+                            $stmt->bindParam(7, $status, PDO::PARAM_STR);
+                            $stmt->bindParam(8, $_SESSION['user_id'], PDO::PARAM_INT);
                             if ($stmt->execute()) {
                                 $conn->commit();
                                 $message = "Supplier added successfully!";
                                 $message_type = "success";
                             } else {
-                                throw new Exception("Error adding supplier: " . $conn->error);
+                                throw new Exception("Error adding supplier: " . $conn->errorInfo()[2]);
                             }
-                            $stmt->close();
+                            $stmt = null;
                         } else {
-                            throw new Exception("Error preparing supplier statement: " . $conn->error);
+                            throw new Exception("Error preparing supplier statement: " . $conn->errorInfo()[2]);
                         }
                     } catch (Exception $e) {
                         $conn->rollback();
@@ -108,17 +115,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $query = "UPDATE suppliers SET name = ?, contact_person = ?, email = ?, phone = ?, address = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?";
                         $stmt = $conn->prepare($query);
                         if ($stmt) {
-                            $stmt->bind_param("ssssssii", $name, $contact_person, $email, $phone, $address, $status, $id, $_SESSION['tenant_id']);
+                            $stmt->bindParam(1, $name, PDO::PARAM_STR);
+                            $stmt->bindParam(2, $contact_person, PDO::PARAM_STR);
+                            $stmt->bindParam(3, $email, PDO::PARAM_STR);
+                            $stmt->bindParam(4, $phone, PDO::PARAM_STR);
+                            $stmt->bindParam(5, $address, PDO::PARAM_STR);
+                            $stmt->bindParam(6, $status, PDO::PARAM_STR);
+                            $stmt->bindParam(7, $id, PDO::PARAM_INT);
+                            $stmt->bindParam(8, $_SESSION['tenant_id'], PDO::PARAM_INT);
                             if ($stmt->execute()) {
                                 $conn->commit();
                                 $message = "Supplier updated successfully!";
                                 $message_type = "success";
                             } else {
-                                throw new Exception("Error updating supplier: " . $conn->error);
+                                throw new Exception("Error updating supplier: " . $conn->errorInfo()[2]);
                             }
-                            $stmt->close();
+                            $stmt = null;
                         } else {
-                            throw new Exception("Error preparing supplier update statement: " . $conn->error);
+                            throw new Exception("Error preparing supplier update statement: " . $conn->errorInfo()[2]);
                         }
                     } catch (Exception $e) {
                         $conn->rollback();
@@ -140,17 +154,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $query = "DELETE FROM suppliers WHERE id = ? AND tenant_id = ?";
                         $stmt = $conn->prepare($query);
                         if ($stmt) {
-                            $stmt->bind_param("ii", $id, $_SESSION['tenant_id']);
+                            $stmt->bindParam(1, $id, PDO::PARAM_INT);
+                            $stmt->bindParam(2, $_SESSION['tenant_id'], PDO::PARAM_INT);
                             if ($stmt->execute()) {
-                                $stmt->close();
+                                $stmt = null;
                                 $conn->commit();
                                 $message = "Supplier deleted successfully!";
                                 $message_type = "success";
                             } else {
-                                throw new Exception("Error deleting supplier: " . $conn->error);
+                                throw new Exception("Error deleting supplier: " . $conn->errorInfo()[2]);
                             }
                         } else {
-                            throw new Exception("Error preparing delete statement: " . $conn->error);
+                            throw new Exception("Error preparing delete statement: " . $conn->errorInfo()[2]);
                         }
                     } catch (Exception $e) {
                         $conn->rollback();
@@ -171,13 +186,13 @@ $suppliers = array();
 $query = "SELECT * FROM suppliers WHERE tenant_id = ? ORDER BY name";
 $stmt = $conn->prepare($query);
 if ($stmt) {
-    $stmt->bind_param("i", $_SESSION['tenant_id']);
+    $stmt->bindParam(1, $_SESSION['tenant_id'], PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
+    $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    while ($row = array_shift($result)) {
         $suppliers[] = $row;
     }
-    $stmt->close();
+    $stmt = null;
 }
 ?>
 

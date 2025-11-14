@@ -42,11 +42,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Check if username or email already exists
                     $check_query = "SELECT id FROM users WHERE username = ? OR email = ?";
                     $check_stmt = $conn->prepare($check_query);
-                    $check_stmt->bind_param("ss", $username, $email);
+                    $check_stmt->bindParam(1, $username, PDO::PARAM_STR);
+                    $check_stmt->bindParam(2, $email, PDO::PARAM_STR);
                     $check_stmt->execute();
-                    $check_result = $check_stmt->get_result();
+                    $check_result = $check_stmt->fetchAll(PDO::FETCH_ASSOC);
                     
-                    if ($check_result->num_rows > 0) {
+                    if (count($check_result) > 0) {
                         $message = t('user_already_exists');
                         $message_type = "error";
                     } else {
@@ -56,18 +57,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Insert new user
                         $insert_query = "INSERT INTO users (username, password, email, role, tenant_id, status) VALUES (?, ?, ?, ?, ?, ?)";
                         $insert_stmt = $conn->prepare($insert_query);
-                        $insert_stmt->bind_param("ssssis", $username, $hashed_password, $email, $role, $tenant_id, $status);
+                        $insert_stmt->bindParam(1, $username, PDO::PARAM_STR);
+                        $insert_stmt->bindParam(2, $hashed_password, PDO::PARAM_STR);
+                        $insert_stmt->bindParam(3, $email, PDO::PARAM_STR);
+                        $insert_stmt->bindParam(4, $role, PDO::PARAM_STR);
+                        $insert_stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+                        $insert_stmt->bindParam(6, $status, PDO::PARAM_STR);
                         
                         if ($insert_stmt->execute()) {
                             $message = t('user_added_successfully');
                             $message_type = "success";
                         } else {
-                            $message = t('error_adding_user') . $conn->error;
+                            $message = t('error_adding_user') . $conn->errorInfo()[2];
                             $message_type = "error";
                         }
-                        $insert_stmt->close();
+                        $insert_stmt = null;
                     }
-                    $check_stmt->close();
+                    $check_stmt = null;
                 } else {
                     $message = t('please_fill_required_fields');
                     $message_type = "error";
@@ -86,29 +92,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Check if username or email already exists for other users
                     $check_query = "SELECT id FROM users WHERE (username = ? OR email = ?) AND id != ?";
                     $check_stmt = $conn->prepare($check_query);
-                    $check_stmt->bind_param("ssi", $username, $email, $id);
+                    $check_stmt->bindParam(1, $username, PDO::PARAM_STR);
+                    $check_stmt->bindParam(2, $email, PDO::PARAM_STR);
+                    $check_stmt->bindParam(3, $id, PDO::PARAM_INT);
                     $check_stmt->execute();
-                    $check_result = $check_stmt->get_result();
+                    $check_result = $check_stmt->fetchAll(PDO::FETCH_ASSOC);
                     
-                    if ($check_result->num_rows > 0) {
+                    if (count($check_result) > 0) {
                         $message = t('another_user_exists');
                         $message_type = "error";
                     } else {
                         // Update user
                         $update_query = "UPDATE users SET username = ?, email = ?, role = ?, tenant_id = ?, status = ? WHERE id = ?";
                         $update_stmt = $conn->prepare($update_query);
-                        $update_stmt->bind_param("sssssi", $username, $email, $role, $tenant_id, $status, $id);
+                        $update_stmt->bindParam(1, $username, PDO::PARAM_STR);
+                        $update_stmt->bindParam(2, $email, PDO::PARAM_STR);
+                        $update_stmt->bindParam(3, $role, PDO::PARAM_STR);
+                        $update_stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+                        $update_stmt->bindParam(5, $status, PDO::PARAM_STR);
+                        $update_stmt->bindParam(6, $id, PDO::PARAM_INT);
                         
                         if ($update_stmt->execute()) {
                             $message = t('user_updated_successfully');
                             $message_type = "success";
                         } else {
-                            $message = t('error_updating_user') . $conn->error;
+                            $message = t('error_updating_user') . $conn->errorInfo()[2];
                             $message_type = "error";
                         }
-                        $update_stmt->close();
+                        $update_stmt = null;
                     }
-                    $check_stmt->close();
+                    $check_stmt = null;
                 } else {
                     $message = t('please_fill_required_fields');
                     $message_type = "error";
@@ -122,16 +135,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Delete user
                     $delete_query = "DELETE FROM users WHERE id = ?";
                     $delete_stmt = $conn->prepare($delete_query);
-                    $delete_stmt->bind_param("i", $id);
+                    $delete_stmt->bindParam(1, $id, PDO::PARAM_INT);
                     
                     if ($delete_stmt->execute()) {
                         $message = t('user_deleted_successfully');
                         $message_type = "success";
                     } else {
-                        $message = t('error_deleting_user') . $conn->error;
+                        $message = t('error_deleting_user') . $conn->errorInfo()[2];
                         $message_type = "error";
                     }
-                    $delete_stmt->close();
+                    $delete_stmt = null;
                 } else {
                     $message = t('invalid_user_id');
                     $message_type = "error";
@@ -149,16 +162,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Update user password
                     $update_query = "UPDATE users SET password = ? WHERE id = ?";
                     $update_stmt = $conn->prepare($update_query);
-                    $update_stmt->bind_param("si", $hashed_password, $id);
+                    $update_stmt->bindParam(1, $hashed_password, PDO::PARAM_STR);
+                    $update_stmt->bindParam(2, $id, PDO::PARAM_INT);
                     
                     if ($update_stmt->execute()) {
                         $message = t('password_reset_successfully');
                         $message_type = "success";
                     } else {
-                        $message = t('error_resetting_password') . $conn->error;
+                        $message = t('error_resetting_password') . $conn->errorInfo()[2];
                         $message_type = "error";
                     }
-                    $update_stmt->close();
+                    $update_stmt = null;
                 } else {
                     $message = t('please_provide_new_password');
                     $message_type = "error";
@@ -176,7 +190,7 @@ $users_query = "SELECT u.id, u.username, u.email, u.role, u.status, u.created_at
                 ORDER BY u.created_at DESC";
 $users_result = $conn->query($users_query);
 if ($users_result) {
-    while ($row = $users_result->fetch_assoc()) {
+    while ($row = $users_result->fetch(PDO::FETCH_ASSOC)) {
         $users[] = $row;
     }
 }
@@ -186,7 +200,7 @@ $tenants = [];
 $tenants_query = "SELECT id, business_name FROM tenants WHERE status = 'active' ORDER BY business_name";
 $tenants_result = $conn->query($tenants_query);
 if ($tenants_result) {
-    while ($row = $tenants_result->fetch_assoc()) {
+    while ($row = $tenants_result->fetch(PDO::FETCH_ASSOC)) {
         $tenants[] = $row;
     }
 }

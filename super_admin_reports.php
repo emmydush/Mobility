@@ -33,28 +33,32 @@ $total_customers = 0;
 $sales_count_query = "SELECT COUNT(*) as count FROM sales";
 $sales_count_result = $conn->query($sales_count_query);
 if ($sales_count_result) {
-    $total_sales = $sales_count_result->fetch_assoc()['count'];
+    $row = $sales_count_result->fetch(PDO::FETCH_ASSOC);
+    $total_sales = $row['count'];
 }
 
 // Get total revenue
 $revenue_query = "SELECT SUM(total_amount) as total FROM sales";
 $revenue_result = $conn->query($revenue_query);
 if ($revenue_result) {
-    $total_revenue = $revenue_result->fetch_assoc()['total'] ?? 0;
+    $row = $revenue_result->fetch(PDO::FETCH_ASSOC);
+    $total_revenue = $row['total'] ?? 0;
 }
 
 // Get total products
 $products_query = "SELECT COUNT(*) as count FROM products";
 $products_result = $conn->query($products_query);
 if ($products_result) {
-    $total_products = $products_result->fetch_assoc()['count'];
+    $row = $products_result->fetch(PDO::FETCH_ASSOC);
+    $total_products = $row['count'];
 }
 
 // Get total customers
 $customers_query = "SELECT COUNT(*) as count FROM customers";
 $customers_result = $conn->query($customers_query);
 if ($customers_result) {
-    $total_customers = $customers_result->fetch_assoc()['count'];
+    $row = $customers_result->fetch(PDO::FETCH_ASSOC);
+    $total_customers = $row['count'];
 }
 
 // Fetch sales data for chart
@@ -65,7 +69,7 @@ $sales_chart_query = "SELECT DATE(created_at) as date, COUNT(*) as count FROM sa
                       ORDER BY DATE(created_at)";
 $sales_chart_result = $conn->query($sales_chart_query);
 if ($sales_chart_result) {
-    while ($row = $sales_chart_result->fetch_assoc()) {
+    while ($row = $sales_chart_result->fetch(PDO::FETCH_ASSOC)) {
         $sales_data[] = $row;
     }
 }
@@ -81,7 +85,7 @@ $top_products_query = "SELECT p.name, SUM(si.quantity) as total_sold
                        LIMIT 5";
 $top_products_result = $conn->query($top_products_query);
 if ($top_products_result) {
-    while ($row = $top_products_result->fetch_assoc()) {
+    while ($row = $top_products_result->fetch(PDO::FETCH_ASSOC)) {
         $top_products[] = $row;
     }
 }
@@ -95,7 +99,7 @@ $tenant_performance_query = "SELECT t.business_name, COUNT(s.id) as sales_count,
                              ORDER BY revenue DESC";
 $tenant_performance_result = $conn->query($tenant_performance_query);
 if ($tenant_performance_result) {
-    while ($row = $tenant_performance_result->fetch_assoc()) {
+    while ($row = $tenant_performance_result->fetch(PDO::FETCH_ASSOC)) {
         $tenant_performance[] = $row;
     }
 }

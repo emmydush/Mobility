@@ -1,0 +1,80 @@
+name: Code Review
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  php-code-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_pgsql, pgsql, gd, zip
+          tools: php-cs-fixer, phpstan
+
+      - name: Run PHP_CodeSniffer
+        run: |
+          composer require --dev squizlabs/php_codesniffer
+          if [ -f "phpcs.xml" ] || [ -f "phpcs.xml.dist" ]; then
+            ./vendor/bin/phpcs
+          else
+            echo "No PHPCS config found, creating default standard"
+            ./vendor/bin/phpcs --standard=PSR12 src/ api/
+          fi
+
+      - name: Run PHPStan
+        run: |
+          composer require --dev phpstan/phpstan
+          if [ -f "phpstan.neon" ] || [ -f "phpstan.neon.dist" ]; then
+            ./vendor/bin/phpstan analyse
+          else
+            echo "No PHPStan config found, using default level 5"
+            ./vendor/bin/phpstan analyse src/ api/ --level=5
+          fi
+
+      - name: Run Psalm
+        run: |
+          composer require --dev vimeo/psalm
+          if [ -f "psalm.xml" ] || [ -f "psalm.xml.dist" ]; then
+            ./vendor/bin/psalm
+          else
+            echo "No Psalm config found, generating default config"
+            ./vendor/bin/psalm --init src/ 1
+            ./vendor/bin/psalm
+          fi
+
+  security-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_pgsql, pgsql, gd, zip
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Run security analysis
+        run: |
+          composer require --dev enlightn/security-checker
+          ./vendor/bin/security-checker security:check
+
+      - name: Run PHP Malware Scanner
+        run: |
+          composer require --dev github.com/mikestowe/php-malware-scanner
+          if [ -f "phpmalwarefinder" ]; then
+            ./phpmalwarefinder .
+          else
+            echo "PHP Malware Scanner not available, skipping"
+          fi

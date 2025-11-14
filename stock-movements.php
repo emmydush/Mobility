@@ -57,12 +57,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // First verify that the product belongs to the current tenant
                     $verify_query = "SELECT id, price, cost_price FROM products WHERE id = ? AND tenant_id = ?";
                     $verify_stmt = $conn->prepare($verify_query);
-                    $verify_stmt->bind_param("ii", $product_id, $_SESSION['tenant_id']);
+                    $verify_stmt->bindParam(1, $product_id, PDO::PARAM_INT);
+                    $verify_stmt->bindParam(2, $_SESSION['tenant_id'], PDO::PARAM_INT);
                     $verify_stmt->execute();
-                    $verify_result = $verify_stmt->get_result();
+                    $verify_result = $verify_stmt->fetchAll(PDO::FETCH_ASSOC);
                     
-                    if ($verify_result->num_rows > 0) {
-                        $product = $verify_result->fetch_assoc();
+                    if (count($verify_result) > 0) {
+                        $product = $verify_result[0];
                         // Use cost_price for stock-in movements, selling price for stock-out
                         $unit_price = ($type === 'in') ? $product['cost_price'] : $product['price'];
                         $total_value = $unit_price * $quantity;
@@ -71,7 +72,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $query = "INSERT INTO stock_movements (tenant_id, product_id, type, quantity, unit_price, total_value, notes) VALUES (?, ?, ?, ?, ?, ?, ?)";
                         $stmt = $conn->prepare($query);
                         if ($stmt) {
-                            $stmt->bind_param("iiisids", $_SESSION['tenant_id'], $product_id, $type, $quantity, $unit_price, $total_value, $reason);
+                            $stmt->bindParam(1, $_SESSION['tenant_id'], PDO::PARAM_INT);
+                            $stmt->bindParam(2, $product_id, PDO::PARAM_INT);
+                            $stmt->bindParam(3, $type, PDO::PARAM_STR);
+                            $stmt->bindParam(4, $quantity, PDO::PARAM_INT);
+                            $stmt->bindParam(5, $unit_price, PDO::PARAM_STR);
+                            $stmt->bindParam(6, $total_value, PDO::PARAM_STR);
+                            $stmt->bindParam(7, $reason, PDO::PARAM_STR);
                             if ($stmt->execute()) {
                                 // Update product stock
                                 if ($type === 'in') {
@@ -82,27 +89,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 
                                 $update_stmt = $conn->prepare($update_query);
                                 if ($update_stmt) {
-                                    $update_stmt->bind_param("iii", $quantity, $product_id, $_SESSION['tenant_id']);
+                                    $update_stmt->bindParam(1, $quantity, PDO::PARAM_INT);
+                                    $update_stmt->bindParam(2, $product_id, PDO::PARAM_INT);
+                                    $update_stmt->bindParam(3, $_SESSION['tenant_id'], PDO::PARAM_INT);
                                     $update_stmt->execute();
-                                    $update_stmt->close();
+                                    $update_stmt->closeCursor();
                                 }
                                 
                                 $message = "Stock movement added successfully!";
                                 $message_type = "success";
                             } else {
-                                $message = "Error adding stock movement: " . $conn->error;
+                                $message = "Error adding stock movement.";
                                 $message_type = "error";
                             }
-                            $stmt->close();
+                            $stmt->closeCursor();
                         } else {
-                            $message = "Database error: " . $conn->error;
+                            $message = "Database error.";
                             $message_type = "error";
                         }
                     } else {
                         $message = "Product not found or you don't have permission to use it.";
                         $message_type = "error";
                     }
-                    $verify_stmt->close();
+                    $verify_stmt->closeCursor();
                 } else {
                     $message = "All fields are required and product/quantity must be valid.";
                     $message_type = "error";
@@ -117,13 +126,13 @@ $movements = array();
 $query = "SELECT sm.*, p.name as product_name FROM stock_movements sm LEFT JOIN products p ON sm.product_id = p.id WHERE sm.tenant_id = ? ORDER BY sm.created_at DESC";
 $stmt = $conn->prepare($query);
 if ($stmt) {
-    $stmt->bind_param("i", $_SESSION['tenant_id']);
+    $stmt->bindParam(1, $_SESSION['tenant_id'], PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
+    $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($result as $row) {
         $movements[] = $row;
     }
-    $stmt->close();
+    $stmt->closeCursor();
 }
 
 // Fetch all products for the dropdown for the current tenant
@@ -131,13 +140,13 @@ $products = array();
 $product_query = "SELECT id, name FROM products WHERE tenant_id = ? ORDER BY name";
 $product_stmt = $conn->prepare($product_query);
 if ($product_stmt) {
-    $product_stmt->bind_param("i", $_SESSION['tenant_id']);
+    $product_stmt->bindParam(1, $_SESSION['tenant_id'], PDO::PARAM_INT);
     $product_stmt->execute();
-    $product_result = $product_stmt->get_result();
-    while ($row = $product_result->fetch_assoc()) {
+    $product_result = $product_stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($product_result as $row) {
         $products[] = $row;
     }
-    $product_stmt->close();
+    $product_stmt->closeCursor();
 }
 ?>
 

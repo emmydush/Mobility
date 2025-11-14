@@ -1,0 +1,99 @@
+name: Code Coverage
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_DB: mobility_coverage
+          POSTGRES_USER: mobility_user
+          POSTGRES_PASSWORD: mobility_pass
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_pgsql, pgsql, gd, zip
+          coverage: xdebug
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Setup database
+        run: |
+          export PGPASSWORD=mobility_pass
+          psql -h localhost -U mobility_user -d mobility_coverage -f init-scripts/init-db.sql
+
+      - name: Run tests with coverage
+        run: |
+          if [ -f "phpunit.xml" ]; then
+            ./vendor/bin/phpunit --coverage-clover coverage.xml
+          else
+            echo "No phpunit.xml found, creating default config"
+            echo "Creating basic phpunit.xml for coverage"
+            cat > phpunit.xml << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.3/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         cacheResultFile=".phpunit.cache/test-results"
+         executionOrder="depends,defects"
+         forceCoversAnnotation="false"
+         beStrictAboutCoversAnnotation="true"
+         beStrictAboutOutputDuringTests="true"
+         beStrictAboutTodoAnnotatedTests="true"
+         convertDeprecationsToExceptions="true"
+         failOnRisky="true"
+         failOnWarning="true"
+         verbose="true">
+    <coverage processUncoveredFiles="true">
+        <include>
+            <directory suffix=".php">src</directory>
+            <directory suffix=".php">api</directory>
+        </include>
+    </coverage>
+    <testsuites>
+        <testsuite name="default">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>
+EOF
+            ./vendor/bin/phpunit --coverage-clover coverage.xml
+          fi
+        env:
+          DATABASE_URL: postgresql://mobility_user:mobility_pass@localhost:5432/mobility_coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-coverage-report
+          path: coverage.xml

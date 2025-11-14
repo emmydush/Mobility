@@ -1,0 +1,56 @@
+name: Dependency Update
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'  # Run every Monday at 2 AM UTC
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_pgsql, pgsql, gd, zip
+
+      - name: Cache Composer packages
+        id: composer-cache
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-
+
+      - name: Update dependencies
+        run: |
+          composer update --prefer-stable --prefer-dist --no-progress
+
+      - name: Run tests
+        run: |
+          if [ -f "phpunit.xml" ]; then
+            ./vendor/bin/phpunit
+          else
+            echo "No phpunit.xml found, skipping tests"
+          fi
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: Update dependencies
+          title: 'Update dependencies'
+          body: |
+            ## Dependency Updates
+            
+            This pull request updates the project dependencies to their latest stable versions.
+            
+            Please review the changes and ensure all tests pass before merging.
+          branch: dependency-updates
+          base: develop
+          labels: dependencies

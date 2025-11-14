@@ -535,7 +535,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                     <?php 
                                     global $conn;
                                     $result = $conn->query("SELECT VERSION() as version");
-                                    if ($result && $row = $result->fetch_assoc()) {
+                                    if ($result) {
+                                        $row = $result->fetch(PDO::FETCH_ASSOC);
                                         echo $row['version'];
                                     } else {
                                         echo "Unknown";

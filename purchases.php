@@ -207,11 +207,11 @@ $query = "SELECT p.*, s.name as supplier_name FROM purchases p LEFT JOIN supplie
 $stmt = $conn->prepare($query);
 if ($stmt) {
     $stmt->execute();
-    $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
+    $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($result as $row) {
         $purchases[] = $row;
     }
-    $stmt->close();
+    $stmt->closeCursor();
 }
 
 // Fetch all suppliers for the dropdown
@@ -220,11 +220,11 @@ $supplier_query = "SELECT id, name FROM suppliers WHERE status = 'active' ORDER 
 $supplier_stmt = $conn->prepare($supplier_query);
 if ($supplier_stmt) {
     $supplier_stmt->execute();
-    $supplier_result = $supplier_stmt->get_result();
-    while ($row = $supplier_result->fetch_assoc()) {
+    $supplier_result = $supplier_stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($supplier_result as $row) {
         $suppliers[] = $row;
     }
-    $supplier_stmt->close();
+    $supplier_stmt->closeCursor();
 }
 
 // Fetch all products for the dropdown
@@ -233,11 +233,11 @@ $product_query = "SELECT id, name, cost_price FROM products ORDER BY name";
 $product_stmt = $conn->prepare($product_query);
 if ($product_stmt) {
     $product_stmt->execute();
-    $product_result = $product_stmt->get_result();
-    while ($row = $product_result->fetch_assoc()) {
+    $product_result = $product_stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($product_result as $row) {
         $products[] = $row;
     }
-    $product_stmt->close();
+    $product_stmt->closeCursor();
 }
 
 // Generate a unique purchase number

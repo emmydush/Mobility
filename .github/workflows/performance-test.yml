@@ -1,0 +1,84 @@
+name: Performance Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  performance-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_DB: mobility_perf
+          POSTGRES_USER: mobility_user
+          POSTGRES_PASSWORD: mobility_pass
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_pgsql, pgsql, gd, zip
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Setup database
+        run: |
+          export PGPASSWORD=mobility_pass
+          psql -h localhost -U mobility_user -d mobility_perf -f init-scripts/init-db.sql
+
+      - name: Install Apache Bench
+        run: sudo apt-get install apache2-utils
+
+      - name: Start PHP built-in server
+        run: |
+          php -S localhost:8000 &
+          sleep 5
+
+      - name: Run load test on login page
+        run: |
+          ab -n 1000 -c 10 http://localhost:8000/login.php > login_load_test.txt
+
+      - name: Run load test on dashboard
+        run: |
+          ab -n 1000 -c 10 http://localhost:8000/dashboard.php > dashboard_load_test.txt
+
+      - name: Run database performance test
+        run: |
+          echo "Running database performance tests..."
+          # This would typically involve running specific database queries and measuring their performance
+          echo "Database performance test completed"
+
+      - name: Upload performance test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-test-results
+          path: |
+            login_load_test.txt
+            dashboard_load_test.txt
+
+      - name: Analyze results
+        run: |
+          echo "Performance test analysis:"
+          echo "=========================="
+          echo "Login page test results:"
+          cat login_load_test.txt | grep "Requests per second"
+          echo ""
+          echo "Dashboard test results:"
+          cat dashboard_load_test.txt | grep "Requests per second"

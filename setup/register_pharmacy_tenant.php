@@ -20,10 +20,17 @@ $insert_query = "INSERT INTO tenants (tenant_id, business_name, business_type, b
 
 $stmt = $conn->prepare($insert_query);
 if ($stmt) {
-    $stmt->bind_param("ssssssss", $tenant_id, $business_name, $business_type, $business_email, $business_phone, $country, $city, $address);
+    $stmt->bindParam(1, $tenant_id, PDO::PARAM_STR);
+    $stmt->bindParam(2, $business_name, PDO::PARAM_STR);
+    $stmt->bindParam(3, $business_type, PDO::PARAM_STR);
+    $stmt->bindParam(4, $business_email, PDO::PARAM_STR);
+    $stmt->bindParam(5, $business_phone, PDO::PARAM_STR);
+    $stmt->bindParam(6, $country, PDO::PARAM_STR);
+    $stmt->bindParam(7, $city, PDO::PARAM_STR);
+    $stmt->bindParam(8, $address, PDO::PARAM_STR);
     
     if ($stmt->execute()) {
-        $new_tenant_id = $conn->insert_id;
+        $new_tenant_id = $conn->lastInsertId();
         echo "✓ Successfully registered new tenant:\n";
         echo "  Business: $business_name\n";
         echo "  Type: $business_type\n";
@@ -38,10 +45,14 @@ if ($stmt) {
         $user_query = "INSERT INTO users (username, email, password, role, tenant_id) VALUES (?, ?, ?, ?, ?)";
         $user_stmt = $conn->prepare($user_query);
         if ($user_stmt) {
-            $user_stmt->bind_param("ssssi", $username, $email, $password, $role, $new_tenant_id);
+            $user_stmt->bindParam(1, $username, PDO::PARAM_STR);
+            $user_stmt->bindParam(2, $email, PDO::PARAM_STR);
+            $user_stmt->bindParam(3, $password, PDO::PARAM_STR);
+            $user_stmt->bindParam(4, $role, PDO::PARAM_STR);
+            $user_stmt->bindParam(5, $new_tenant_id, PDO::PARAM_INT);
             
             if ($user_stmt->execute()) {
-                $new_user_id = $user_stmt->insert_id;
+                $new_user_id = $conn->lastInsertId();
                 echo "✓ Created admin user for pharmacy:\n";
                 echo "  Username: $username\n";
                 echo "  User ID: $new_user_id\n";
@@ -53,38 +64,39 @@ if ($stmt) {
                     // Get permission ID
                     $perm_query = "SELECT id FROM permissions WHERE name = ?";
                     $perm_stmt = $conn->prepare($perm_query);
-                    $perm_stmt->bind_param("s", $permission_name);
+                    $perm_stmt->bindParam(1, $permission_name, PDO::PARAM_STR);
                     $perm_stmt->execute();
-                    $perm_result = $perm_stmt->get_result();
+                    $perm_result = $perm_stmt->fetchAll(PDO::FETCH_ASSOC);
                     
-                    if ($perm_result->num_rows > 0) {
-                        $permission_id = $perm_result->fetch_assoc()['id'];
+                    if (count($perm_result) > 0) {
+                        $permission_id = $perm_result[0]['id'];
                         
                         // Insert the permission assignment
                         $insert_perm_query = "INSERT INTO user_permissions (user_id, permission_id, granted) VALUES (?, ?, 1)";
                         $insert_perm_stmt = $conn->prepare($insert_perm_query);
-                        $insert_perm_stmt->bind_param("ii", $new_user_id, $permission_id);
+                        $insert_perm_stmt->bindParam(1, $new_user_id, PDO::PARAM_INT);
+                        $insert_perm_stmt->bindParam(2, $permission_id, PDO::PARAM_INT);
                         $insert_perm_stmt->execute();
-                        $insert_perm_stmt->close();
+                        $insert_perm_stmt->closeCursor();
                     }
-                    $perm_stmt->close();
+                    $perm_stmt->closeCursor();
                 }
                 
                 echo "✓ Assigned permissions to pharmacy admin\n";
             } else {
-                echo "✗ Error creating user: " . $user_stmt->error . "\n";
+                echo "✗ Error creating user.\n";
             }
-            $user_stmt->close();
+            $user_stmt->closeCursor();
         }
     } else {
-        echo "✗ Error creating tenant: " . $stmt->error . "\n";
+        echo "✗ Error creating tenant.\n";
     }
-    $stmt->close();
+    $stmt->closeCursor();
 } else {
-    echo "✗ Error preparing statement: " . $conn->error . "\n";
+    echo "✗ Error preparing statement.\n";
 }
 
-$conn->close();
+$conn = null;
 
 echo "\nNew pharmacy business registered successfully!\n";
 echo "Login credentials:\n";

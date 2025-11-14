@@ -1,0 +1,57 @@
+# Docker ignore file for Mobility Inventory Management System
+
+# Git
+.git
+.gitignore
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+
+# Composer
+vendor/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Docker
+.dockerignore
+Dockerfile*
+docker-compose*
+.docker/
+
+# Node modules
+node_modules/
+
+# Tests
+tests/
+phpunit.xml
+.coverage/
+
+# Documentation
+README.md
+docs/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+
+# Profile pictures and product images (these should be mounted as volumes)
+profile_pictures/
+product_images/

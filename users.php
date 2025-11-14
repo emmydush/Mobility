@@ -52,16 +52,16 @@ if ($role === 'user' && isset($_SESSION['user_id'])) {
     $role_query = "SELECT role FROM users WHERE id = ?";
     $role_stmt = $conn->prepare($role_query);
     if ($role_stmt) {
-        $role_stmt->bind_param("i", $_SESSION['user_id']);
+        $role_stmt->bindParam(1, $_SESSION['user_id'], PDO::PARAM_INT);
         $role_stmt->execute();
-        $role_result = $role_stmt->get_result();
-        if ($role_result->num_rows > 0) {
-            $role_row = $role_result->fetch_assoc();
+        $role_result = $role_stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (count($role_result) > 0) {
+            $role_row = array_shift($role_result);
             $role = $role_row['role'];
             // Update session with role
             $_SESSION['role'] = $role;
         }
-        $role_stmt->close();
+        $role_stmt = null;
     }
 }
 
@@ -85,11 +85,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $check_query = "SELECT id FROM users WHERE (username = ? OR email = ?) AND tenant_id = ?";
                     $check_stmt = $conn->prepare($check_query);
                     if ($check_stmt) {
-                        $check_stmt->bind_param("ssi", $username, $email, $_SESSION['tenant_id']);
+                        $check_stmt->bindParam(1, $username, PDO::PARAM_STR);
+                        $check_stmt->bindParam(2, $email, PDO::PARAM_STR);
+                        $check_stmt->bindParam(3, $_SESSION['tenant_id'], PDO::PARAM_INT);
                         $check_stmt->execute();
-                        $check_result = $check_stmt->get_result();
+                        $check_result = $check_stmt->fetchAll(PDO::FETCH_ASSOC);
                         
-                        if ($check_result->num_rows > 0) {
+                        if (count($check_result) > 0) {
                             $message = "Username or email already exists.";
                             $message_type = "error";
                         } else {
@@ -99,7 +101,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $insert_query = "INSERT INTO users (tenant_id, username, password, email, role, phone, address, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
                             $insert_stmt = $conn->prepare($insert_query);
                             if ($insert_stmt) {
-                                $insert_stmt->bind_param("issssssi", $_SESSION['tenant_id'], $username, $hashed_password, $email, $role, $phone, $address, $_SESSION['user_id']);
+                                $insert_stmt->bindParam(1, $_SESSION['tenant_id'], PDO::PARAM_INT);
+                                $insert_stmt->bindParam(2, $username, PDO::PARAM_STR);
+                                $insert_stmt->bindParam(3, $hashed_password, PDO::PARAM_STR);
+                                $insert_stmt->bindParam(4, $email, PDO::PARAM_STR);
+                                $insert_stmt->bindParam(5, $role, PDO::PARAM_STR);
+                                $insert_stmt->bindParam(6, $phone, PDO::PARAM_STR);
+                                $insert_stmt->bindParam(7, $address, PDO::PARAM_STR);
+                                $insert_stmt->bindParam(8, $_SESSION['user_id'], PDO::PARAM_INT);
                                 
                                 if ($insert_stmt->execute()) {
                                     // Log the activity
@@ -107,26 +116,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $activity_stmt = $conn->prepare($activity_query);
                                     if ($activity_stmt) {
                                         $new_values = json_encode(['username' => $username, 'email' => $email, 'role' => $role, 'phone' => $phone, 'address' => $address]);
-                                        $activity_stmt->bind_param("iis", $_SESSION['user_id'], $insert_stmt->insert_id, $new_values);
+                                        $activity_stmt->bindParam(1, $_SESSION['user_id'], PDO::PARAM_INT);
+                                        $activity_stmt->bindParam(2, $conn->lastInsertId(), PDO::PARAM_INT);
+                                        $activity_stmt->bindParam(3, $new_values, PDO::PARAM_STR);
                                         $activity_stmt->execute();
-                                        $activity_stmt->close();
+                                        $activity_stmt = null;
                                     }
                                     
                                     $message = "User created successfully!";
                                     $message_type = "success";
                                 } else {
-                                    $message = "Error creating user: " . $conn->error;
+                                    $message = "Error creating user: " . $conn->errorInfo()[2];
                                     $message_type = "error";
                                 }
-                                $insert_stmt->close();
+                                $insert_stmt = null;
                             } else {
-                                $message = "Database error: " . $conn->error;
+                                $message = "Database error: " . $conn->errorInfo()[2];
                                 $message_type = "error";
                             }
                         }
-                        $check_stmt->close();
+                        $check_stmt = null;
                     } else {
-                        $message = "Database error: " . $conn->error;
+                        $message = "Database error: " . $conn->errorInfo()[2];
                         $message_type = "error";
                     }
                 } else {
@@ -153,11 +164,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $check_query = "SELECT id FROM users WHERE (username = ? OR email = ?) AND id != ? AND tenant_id = ?";
                     $check_stmt = $conn->prepare($check_query);
                     if ($check_stmt) {
-                        $check_stmt->bind_param("ssii", $username, $email, $id, $_SESSION['tenant_id']);
+                        $check_stmt->bindParam(1, $username, PDO::PARAM_STR);
+                        $check_stmt->bindParam(2, $email, PDO::PARAM_STR);
+                        $check_stmt->bindParam(3, $id, PDO::PARAM_INT);
+                        $check_stmt->bindParam(4, $_SESSION['tenant_id'], PDO::PARAM_INT);
                         $check_stmt->execute();
-                        $check_result = $check_stmt->get_result();
+                        $check_result = $check_stmt->fetchAll(PDO::FETCH_ASSOC);
                         
-                        if ($check_result->num_rows > 0) {
+                        if (count($check_result) > 0) {
                             $message = "Username or email already exists for another user.";
                             $message_type = "error";
                         } else {
@@ -167,12 +181,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
                                 $update_query = "UPDATE users SET username = ?, email = ?, role = ?, status = ?, password = ?, phone = ?, address = ? WHERE id = ? AND tenant_id = ?";
                                 $update_stmt = $conn->prepare($update_query);
-                                $update_stmt->bind_param("sssssssii", $username, $email, $role, $status, $hashed_password, $phone, $address, $id, $_SESSION['tenant_id']);
+                                $update_stmt->bindParam(1, $username, PDO::PARAM_STR);
+                                $update_stmt->bindParam(2, $email, PDO::PARAM_STR);
+                                $update_stmt->bindParam(3, $role, PDO::PARAM_STR);
+                                $update_stmt->bindParam(4, $status, PDO::PARAM_STR);
+                                $update_stmt->bindParam(5, $hashed_password, PDO::PARAM_STR);
+                                $update_stmt->bindParam(6, $phone, PDO::PARAM_STR);
+                                $update_stmt->bindParam(7, $address, PDO::PARAM_STR);
+                                $update_stmt->bindParam(8, $id, PDO::PARAM_INT);
+                                $update_stmt->bindParam(9, $_SESSION['tenant_id'], PDO::PARAM_INT);
                             } else {
                                 // Update without changing password
                                 $update_query = "UPDATE users SET username = ?, email = ?, role = ?, status = ?, phone = ?, address = ? WHERE id = ? AND tenant_id = ?";
                                 $update_stmt = $conn->prepare($update_query);
-                                $update_stmt->bind_param("sssssii", $username, $email, $role, $status, $phone, $address, $id, $_SESSION['tenant_id']);
+                                $update_stmt->bindParam(1, $username, PDO::PARAM_STR);
+                                $update_stmt->bindParam(2, $email, PDO::PARAM_STR);
+                                $update_stmt->bindParam(3, $role, PDO::PARAM_STR);
+                                $update_stmt->bindParam(4, $status, PDO::PARAM_STR);
+                                $update_stmt->bindParam(5, $phone, PDO::PARAM_STR);
+                                $update_stmt->bindParam(6, $address, PDO::PARAM_STR);
+                                $update_stmt->bindParam(7, $id, PDO::PARAM_INT);
+                                $update_stmt->bindParam(8, $_SESSION['tenant_id'], PDO::PARAM_INT);
                             }
                             
                             if ($update_stmt->execute()) {
@@ -184,22 +213,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $activity_stmt = $conn->prepare($activity_query);
                                 if ($activity_stmt) {
                                     $new_values = json_encode(['username' => $username, 'email' => $email, 'role' => $role, 'status' => $status, 'phone' => $phone, 'address' => $address]);
-                                    $activity_stmt->bind_param("iis", $_SESSION['user_id'], $id, $new_values);
+                                    $activity_stmt->bindParam(1, $_SESSION['user_id'], PDO::PARAM_INT);
+                                    $activity_stmt->bindParam(2, $id, PDO::PARAM_INT);
+                                    $activity_stmt->bindParam(3, $new_values, PDO::PARAM_STR);
                                     $activity_stmt->execute();
-                                    $activity_stmt->close();
+                                    $activity_stmt = null;
                                 }
                                 
                                 $message = "User updated successfully!";
                                 $message_type = "success";
                             } else {
-                                $message = "Error updating user: " . $conn->error;
+                                $message = "Error updating user: " . $conn->errorInfo()[2];
                                 $message_type = "error";
                             }
-                            $update_stmt->close();
+                            $update_stmt = null;
                         }
-                        $check_stmt->close();
+                        $check_stmt = null;
                     } else {
-                        $message = "Database error: " . $conn->error;
+                        $message = "Database error: " . $conn->errorInfo()[2];
                         $message_type = "error";
                     }
                 } else {
@@ -220,39 +251,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $user_stmt = $conn->prepare($user_query);
                     $user_data = [];
                     if ($user_stmt) {
-                        $user_stmt->bind_param("ii", $id, $_SESSION['tenant_id']);
+                        $user_stmt->bindParam(1, $id, PDO::PARAM_INT);
+                        $user_stmt->bindParam(2, $_SESSION['tenant_id'], PDO::PARAM_INT);
                         $user_stmt->execute();
-                        $user_result = $user_stmt->get_result();
-                        if ($user_result->num_rows > 0) {
-                            $user_data = $user_result->fetch_assoc();
+                        $user_result = $user_stmt->fetchAll(PDO::FETCH_ASSOC);
+                        if (count($user_result) > 0) {
+                            $user_data = array_shift($user_result);
                         }
-                        $user_stmt->close();
+                        $user_stmt = null;
                     }
                     
                     $query = "DELETE FROM users WHERE id = ? AND tenant_id = ?";
                     $stmt = $conn->prepare($query);
                     if ($stmt) {
-                        $stmt->bind_param("ii", $id, $_SESSION['tenant_id']);
+                        $stmt->bindParam(1, $id, PDO::PARAM_INT);
+                        $stmt->bindParam(2, $_SESSION['tenant_id'], PDO::PARAM_INT);
                         if ($stmt->execute()) {
                             // Log the activity
                             $activity_query = "INSERT INTO activity_log (user_id, action_type, table_name, record_id, old_values) VALUES (?, 'delete', 'users', ?, ?)";
                             $activity_stmt = $conn->prepare($activity_query);
                             if ($activity_stmt) {
                                 $old_values = json_encode($user_data);
-                                $activity_stmt->bind_param("iis", $_SESSION['user_id'], $id, $old_values);
+                                $activity_stmt->bindParam(1, $_SESSION['user_id'], PDO::PARAM_INT);
+                                $activity_stmt->bindParam(2, $id, PDO::PARAM_INT);
+                                $activity_stmt->bindParam(3, $old_values, PDO::PARAM_STR);
                                 $activity_stmt->execute();
-                                $activity_stmt->close();
+                                $activity_stmt = null;
                             }
                             
                             $message = "User deleted successfully!";
                             $message_type = "success";
                         } else {
-                            $message = "Error deleting user: " . $conn->error;
+                            $message = "Error deleting user: " . $conn->errorInfo()[2];
                             $message_type = "error";
                         }
-                        $stmt->close();
+                        $stmt = null;
                     } else {
-                        $message = "Database error: " . $conn->error;
+                        $message = "Database error: " . $conn->errorInfo()[2];
                         $message_type = "error";
                     }
                 } else {
@@ -271,7 +306,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $query = "UPDATE users SET status = ? WHERE id = ? AND tenant_id = ?";
                     $stmt = $conn->prepare($query);
                     if ($stmt) {
-                        $stmt->bind_param("sii", $new_status, $id, $_SESSION['tenant_id']);
+                        $stmt->bindParam(1, $new_status, PDO::PARAM_STR);
+                        $stmt->bindParam(2, $id, PDO::PARAM_INT);
+                        $stmt->bindParam(3, $_SESSION['tenant_id'], PDO::PARAM_INT);
                         if ($stmt->execute()) {
                             // Log the activity
                             $activity_query = "INSERT INTO activity_log (user_id, action_type, table_name, record_id, old_values, new_values) VALUES (?, 'update_status', 'users', ?, ?, ?)";
@@ -279,20 +316,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             if ($activity_stmt) {
                                 $old_values = json_encode(['status' => $current_status]);
                                 $new_values = json_encode(['status' => $new_status]);
-                                $activity_stmt->bind_param("iiss", $_SESSION['user_id'], $id, $old_values, $new_values);
+                                $activity_stmt->bindParam(1, $_SESSION['user_id'], PDO::PARAM_INT);
+                                $activity_stmt->bindParam(2, $id, PDO::PARAM_INT);
+                                $activity_stmt->bindParam(3, $old_values, PDO::PARAM_STR);
+                                $activity_stmt->bindParam(4, $new_values, PDO::PARAM_STR);
                                 $activity_stmt->execute();
-                                $activity_stmt->close();
+                                $activity_stmt = null;
                             }
                             
                             $message = "User status updated successfully!";
                             $message_type = "success";
                         } else {
-                            $message = "Error updating user status: " . $conn->error;
+                            $message = "Error updating user status: " . $conn->errorInfo()[2];
                             $message_type = "error";
                         }
-                        $stmt->close();
+                        $stmt = null;
                     } else {
-                        $message = "Database error: " . $conn->error;
+                        $message = "Database error: " . $conn->errorInfo()[2];
                         $message_type = "error";
                     }
                 } else {
@@ -311,27 +351,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $query = "UPDATE users SET password = ? WHERE id = ? AND tenant_id = ?";
                     $stmt = $conn->prepare($query);
                     if ($stmt) {
-                        $stmt->bind_param("sii", $hashed_password, $id, $_SESSION['tenant_id']);
+                        $stmt->bindParam(1, $hashed_password, PDO::PARAM_STR);
+                        $stmt->bindParam(2, $id, PDO::PARAM_INT);
+                        $stmt->bindParam(3, $_SESSION['tenant_id'], PDO::PARAM_INT);
                         if ($stmt->execute()) {
                             // Log the activity
                             $activity_query = "INSERT INTO activity_log (user_id, action_type, table_name, record_id, new_values) VALUES (?, 'reset_password', 'users', ?, ?)";
                             $activity_stmt = $conn->prepare($activity_query);
                             if ($activity_stmt) {
                                 $new_values = json_encode(['new_password_length' => strlen($new_password)]);
-                                $activity_stmt->bind_param("iis", $_SESSION['user_id'], $id, $new_values);
+                                $activity_stmt->bindParam(1, $_SESSION['user_id'], PDO::PARAM_INT);
+                                $activity_stmt->bindParam(2, $id, PDO::PARAM_INT);
+                                $activity_stmt->bindParam(3, $new_values, PDO::PARAM_STR);
                                 $activity_stmt->execute();
-                                $activity_stmt->close();
+                                $activity_stmt = null;
                             }
                             
                             $message = "Password reset successfully! New password: " . $new_password;
                             $message_type = "success";
                         } else {
-                            $message = "Error resetting password: " . $conn->error;
+                            $message = "Error resetting password: " . $conn->errorInfo()[2];
                             $message_type = "error";
                         }
-                        $stmt->close();
+                        $stmt = null;
                     } else {
-                        $message = "Database error: " . $conn->error;
+                        $message = "Database error: " . $conn->errorInfo()[2];
                         $message_type = "error";
                     }
                 } else {
@@ -353,13 +397,13 @@ $query = "SELECT u.*, COUNT(us.id) as active_sessions
           ORDER BY u.username";
 $stmt = $conn->prepare($query);
 if ($stmt) {
-    $stmt->bind_param("i", $_SESSION['tenant_id']);
+    $stmt->bindParam(1, $_SESSION['tenant_id'], PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
+    $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    while ($row = array_shift($result)) {
         $users[] = $row;
     }
-    $stmt->close();
+    $stmt = null;
 }
 
 // Fetch all permissions
@@ -367,7 +411,7 @@ $all_permissions = array();
 $perm_query = "SELECT * FROM permissions ORDER BY module, name";
 $perm_result = $conn->query($perm_query);
 if ($perm_result) {
-    while ($row = $perm_result->fetch_assoc()) {
+    while ($row = $perm_result->fetch(PDO::FETCH_ASSOC)) {
         $all_permissions[] = $row;
     }
 }
@@ -379,25 +423,26 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
     $verify_query = "SELECT id FROM users WHERE id = ? AND tenant_id = ?";
     $verify_stmt = $conn->prepare($verify_query);
     if ($verify_stmt) {
-        $verify_stmt->bind_param("ii", $_GET['user_id'], $_SESSION['tenant_id']);
+        $verify_stmt->bindParam(1, $_GET['user_id'], PDO::PARAM_INT);
+        $verify_stmt->bindParam(2, $_SESSION['tenant_id'], PDO::PARAM_INT);
         $verify_stmt->execute();
-        $verify_result = $verify_stmt->get_result();
+        $verify_result = $verify_stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        if ($verify_result->num_rows > 0) {
+        if (count($verify_result) > 0) {
             // User belongs to this tenant, fetch activity
             $activity_query = "SELECT * FROM activity_log WHERE user_id = ? ORDER BY created_at DESC LIMIT 10";
             $activity_stmt = $conn->prepare($activity_query);
             if ($activity_stmt) {
-                $activity_stmt->bind_param("i", $_GET['user_id']);
+                $activity_stmt->bindParam(1, $_GET['user_id'], PDO::PARAM_INT);
                 $activity_stmt->execute();
-                $activity_result = $activity_stmt->get_result();
-                while ($row = $activity_result->fetch_assoc()) {
+                $activity_result = $activity_stmt->fetchAll(PDO::FETCH_ASSOC);
+                while ($row = array_shift($activity_result)) {
                     $user_activity[] = $row;
                 }
-                $activity_stmt->close();
+                $activity_stmt = null;
             }
         }
-        $verify_stmt->close();
+        $verify_stmt = null;
     }
 }
 

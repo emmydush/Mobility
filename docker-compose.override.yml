@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  web:
+    volumes:
+      # Mount the application code as a volume for development
+      - .:/var/www/html
+      # Mount profile pictures and product images as volumes
+      - ./profile_pictures:/var/www/html/profile_pictures
+      - ./product_images:/var/www/html/product_images
+    environment:
+      # Enable development mode
+      - APP_ENV=dev
+      - XDEBUG_MODE=debug
+    # Expose additional ports for debugging
+    ports:
+      - "8000:80"
+      - "9003:9003"
+  
+  db:
+    volumes:
+      # Mount the database data as a volume for persistence
+      - postgres_data:/var/lib/postgresql/data
+      # Mount init scripts
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
