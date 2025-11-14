@@ -1,0 +1,183 @@
+<?php
+session_start();
+
+// If user is already logged in, redirect to dashboard
+if (isset($_SESSION['user_id'])) {
+    header("Location: dashboard.php");
+    exit();
+}
+
+// Otherwise, show the enhanced homepage directly
+?>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Complete Inventory Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+      @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      
+      @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+        100% { transform: translateY(0px); }
+      }
+      
+      @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.9; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      
+      .gradient-bg {
+        background: linear-gradient(-45deg, #1e3a8a, #3b82f6, #60a5fa, #93c5fd);
+        background-size: 400% 400%;
+        animation: gradientShift 15s ease infinite;
+      }
+      
+      .floating {
+        animation: float 6s ease-in-out infinite;
+      }
+      
+      .pulsing {
+        animation: pulse 2s ease-in-out infinite;
+      }
+      
+      .fade-in {
+        animation: fadeIn 1s ease-out forwards;
+      }
+      
+      .fade-in-delay-1 {
+        animation: fadeIn 1s ease-out 0.2s forwards;
+        opacity: 0;
+      }
+      
+      .fade-in-delay-2 {
+        animation: fadeIn 1s ease-out 0.4s forwards;
+        opacity: 0;
+      }
+      
+      .fade-in-delay-3 {
+        animation: fadeIn 1s ease-out 0.6s forwards;
+        opacity: 0;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen gradient-bg">
+    <div id="root">
+      <div class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+        <!-- Animated background elements -->
+        <div class="absolute inset-0 overflow-hidden">
+          <div class="absolute top-1/4 left-1/4 w-64 h-64 bg-white opacity-10 rounded-full floating"></div>
+          <div class="absolute top-3/4 right-1/4 w-48 h-48 bg-green-200 opacity-20 rounded-full floating" style="animation-delay: -2s;"></div>
+          <div class="absolute top-1/2 left-3/4 w-32 h-32 bg-green-300 opacity-15 rounded-full floating" style="animation-delay: -4s;"></div>
+        </div>
+        
+        <!-- Main content -->
+        <div class="w-full max-w-2xl z-10">
+          <div class="bg-white bg-opacity-90 backdrop-blur-lg rounded-2xl shadow-2xl p-8 text-center fade-in">
+            <!-- Logo/Icon -->
+            <div class="flex justify-center mb-6">
+              <div class="w-20 h-20 bg-gradient-to-br from-green-500 to-green-700 rounded-2xl flex items-center justify-center pulsing">
+                <i class="fas fa-boxes text-white text-3xl"></i>
+              </div>
+            </div>
+            
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4 fade-in-delay-1">
+              Mobility <span class="text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-green-700">Inventory</span>
+            </h1>
+            
+            <p class="text-xl text-gray-600 mb-2 fade-in-delay-1">Complete Inventory Management System</p>
+            
+            <p class="text-gray-500 mb-8 fade-in-delay-2">
+              Streamline your inventory operations with our powerful, intuitive platform designed for modern businesses.
+            </p>
+            
+            <!-- Feature highlights -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 fade-in-delay-2">
+              <div class="bg-green-50 p-4 rounded-lg">
+                <i class="fas fa-chart-line text-green-600 text-2xl mb-2"></i>
+                <h3 class="font-semibold text-gray-800">Real-time Tracking</h3>
+              </div>
+              <div class="bg-indigo-50 p-4 rounded-lg">
+                <i class="fas fa-bell text-indigo-600 text-2xl mb-2"></i>
+                <h3 class="font-semibold text-gray-800">Smart Alerts</h3>
+              </div>
+              <div class="bg-purple-50 p-4 rounded-lg">
+                <i class="fas fa-file-invoice text-purple-600 text-2xl mb-2"></i>
+                <h3 class="font-semibold text-gray-800">Detailed Reports</h3>
+              </div>
+            </div>
+            
+            <div class="fade-in-delay-3">
+              <p id="redirect-message" class="text-gray-600 mb-4">Redirecting to login page in 10 seconds...</p>
+              <p class="text-gray-500 mb-4">If you are not redirected automatically, <a href="login.php" class="text-green-600 hover:text-blue-800 font-medium underline">click here</a>.</p>
+              
+              <div class="flex justify-center mb-4">
+                <button onclick="cancelRedirect()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors mr-2">
+                  Cancel Redirect
+                </button>
+                <a href="login.php" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                  Go to Login Now
+                </a>
+              </div>
+              
+              <div class="flex justify-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-600"></div>
+              </div>
+            </div>
+            
+            <!-- Additional info -->
+            <div class="mt-8 pt-6 border-t border-gray-200 fade-in-delay-3">
+              <p class="text-sm text-gray-500">
+                <i class="fas fa-shield-alt text-green-500 mr-2"></i> Secure & Reliable
+                <span class="mx-2">•</span>
+                <i class="fas fa-bolt text-yellow-500 mr-2"></i> Lightning Fast
+                <span class="mx-2">•</span>
+                <i class="fas fa-mobile-alt text-indigo-500 mr-2"></i> Mobile Friendly
+              </p>
+            </div>
+          </div>
+          
+          <!-- Footer text -->
+          <div class="text-center mt-6 text-white text-opacity-80 fade-in-delay-3">
+            <p>© 2025 Mobility Inventory System. All rights reserved.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      // Store the timeout ID so we can cancel it if needed
+      let redirectTimeout;
+      
+      // Function to start the redirect
+      function startRedirect() {
+        redirectTimeout = setTimeout(() => {
+          window.location.href = 'login.php';
+        }, 10000); // 10 seconds instead of 5
+      }
+      
+      // Function to cancel the redirect
+      function cancelRedirect() {
+        clearTimeout(redirectTimeout);
+        document.getElementById('redirect-message').textContent = 'Redirect cancelled. You can stay on this page or ';
+      }
+      
+      // Start the redirect when the page loads
+      startRedirect();
+    </script>
+  </body>
+</html>
