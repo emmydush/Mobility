@@ -1,5 +1,21 @@
 -- Multi-User Database Initialization Script for PostgreSQL
 
+-- Tenants table for multi-business support
+CREATE TABLE IF NOT EXISTS tenants (
+    id SERIAL PRIMARY KEY,
+    tenant_id VARCHAR(50) NOT NULL UNIQUE,
+    business_name VARCHAR(100) NOT NULL,
+    business_type VARCHAR(50),
+    business_email VARCHAR(100) NOT NULL UNIQUE,
+    business_phone VARCHAR(20),
+    country VARCHAR(50),
+    city VARCHAR(50),
+    address TEXT,
+    status VARCHAR(10) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Users table with roles and permissions
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
@@ -14,7 +30,9 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by INTEGER,
-    FOREIGN KEY (created_by) REFERENCES users(id)
+    tenant_id INTEGER,
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
 );
 
 -- User sessions for multi-device login management
