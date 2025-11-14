@@ -44,30 +44,39 @@ try {
     $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
     
     if (count($tables) > 0) {
-        echo "Database already initialized with " . count($tables) . " tables. Skipping initialization.\n";
-        exit(0);
-    }
-    
-    echo "Creating database tables...\n";
-    
-    // Read and execute the initialization script
-    $init_script = file_get_contents(__DIR__ . '/init-scripts/init-db.sql');
-    
-    // Split the script into individual statements
-    $statements = explode(';', $init_script);
-    
-    foreach ($statements as $statement) {
-        $statement = trim($statement);
-        if (!empty($statement)) {
-            try {
-                $conn->exec($statement);
-                echo "Executed statement: " . substr($statement, 0, 50) . "...\n";
-            } catch (PDOException $e) {
-                echo "Error executing statement: " . $e->getMessage() . "\n";
-                // Continue with other statements
+        echo "Database already initialized with " . count($tables) . " tables. Skipping table creation.\n";
+    } else {
+        echo "Creating database tables...\n";
+        
+        // Read and execute the initialization script
+        $init_script = file_get_contents(__DIR__ . '/init-scripts/init-db.sql');
+        
+        // Split the script into individual statements
+        $statements = explode(';', $init_script);
+        
+        foreach ($statements as $statement) {
+            $statement = trim($statement);
+            if (!empty($statement)) {
+                try {
+                    $conn->exec($statement);
+                    echo "Executed statement: " . substr($statement, 0, 50) . "...\n";
+                } catch (PDOException $e) {
+                    echo "Error executing statement: " . $e->getMessage() . "\n";
+                    // Continue with other statements
+                }
             }
         }
+        
+        echo "Database tables created successfully\n";
     }
+    
+    // Initialize permissions
+    echo "Initializing permissions...\n";
+    include 'init-permissions.php';
+    
+    // Create super admin user
+    echo "Creating super admin user...\n";
+    include 'create-super-admin.php';
     
     echo "Database initialization completed successfully\n";
     
