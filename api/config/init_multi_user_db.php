@@ -86,6 +86,26 @@ $tables = [
         FOREIGN KEY (created_by) REFERENCES users(id),
         FOREIGN KEY (tenant_id) REFERENCES tenants(id)
     )",
+    
+    // Permissions table
+    "CREATE TABLE IF NOT EXISTS permissions (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) NOT NULL UNIQUE,
+        description TEXT,
+        module VARCHAR(50)
+    )",
+    
+    // User permissions table
+    "CREATE TABLE IF NOT EXISTS user_permissions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        permission_id INTEGER NOT NULL,
+        granted BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE,
+        UNIQUE (user_id, permission_id)
+    )",
 
     // User sessions for multi-device login management
     "CREATE TABLE IF NOT EXISTS user_sessions (
